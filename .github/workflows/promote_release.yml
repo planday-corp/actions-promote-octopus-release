@@ -1,0 +1,60 @@
+name: Promote release in Octopus Deploy
+
+on:
+  workflow_call:
+    inputs:
+      project_name:
+        type: string
+        description: "Name or ID of the Octopus project (ex: Planday.Localization.Api)"
+        required: true
+      deploy_to:
+        type: string
+        description: "Name or ID of the environment to deploy to (ex: stable)"
+        required: true
+      release_number:
+        type: string
+        description: "Version number of the release to deploy"
+        required: true
+      space:
+        type: string
+        description: "The name or ID of the space within which to deploy the release into. Defaults to the 'Default' space if left empty"
+        required: false
+        default: 'Default'
+      octopus_extra_args:
+        type: string
+        description: "Any additional arguments to pass to the 'octo deploy-release' command. Default: '--progress --waitForDeployment'"
+        required: false
+        default: "--progress --waitForDeployment"
+
+    secrets:
+      octopus_server_url:
+        description: "The URL of the Octopus server"
+        required: true
+      octopus_api_key:
+        description: "API key of the Octopus server"
+        required: true      
+
+    outputs:
+      release_number: 
+        description: "Version number of the release deployed"
+        value: ${{inputs.release_number}}
+      environment:
+        description: "Name or ID of the environment deployed to"
+        value: ${{inputs.deploy_to}}
+jobs:
+  promote:
+    name: Promote ${{inputs.project_name}} to ${{inputs.deploy_to}}
+    runs-on: self-hosted
+    steps:
+    - name: Install Octopus CLI
+      uses: OctopusDeploy/install-octopus-cli-action@v1.1.10
+
+    - name: Deploy release to ${{inputs.deploy_to}}
+      run: |
+        octo deploy-release \
+          --project ${{inputs.project_name}} \
+          --releaseNumber=${{inputs.release_number}} \
+          --deployto ${{inputs.deploy_to}} \
+          --space=${{inputs.space}} \
+          --server=${{secrets.octopus_server_url}} \
+          --apiKey=${{secrets.octopus_api_key}} ${{inputs.octopus_extra_args}}
